@@ -1,6 +1,7 @@
 #![feature(async_fn_in_trait)]
 #![feature(box_syntax)]
 
+use std::io::ErrorKind;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -182,7 +183,11 @@ async fn process_status(mut stream: TcpStream) -> std::io::Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    let listener = match TcpListener::bind("127.0.0.1:25565").await {
+        Ok(listener) => listener,
+        Err(err) if err.kind() == ErrorKind::AddrInUse => panic!("Address already in use"),
+        Err(err) => panic!("Failed to bind server; err = {:?}", err),
+    };
 
     loop {
         let (socket, _) = listener.accept().await?;
