@@ -67,6 +67,21 @@ impl PacketDecoder for Ping {
     }
 }
 
+#[derive(Debug)]
+struct Response {
+    value: String,
+}
+
+impl PacketEncoder for Response {
+    fn packet_id() -> i32 { 0 }
+
+    async fn encode<W: AsyncWrite + Unpin>(&self, stream: &mut W) -> std::io::Result<()> {
+        write_string(stream, self.value.clone()).await?;
+
+        Ok(())
+    }
+}
+
 async fn write_var_int<W: AsyncWrite + Unpin>(stream: &mut W, mut value: i32) -> std::io::Result<()> {
     loop {
         if value & 0xfffff80 == 0 {
@@ -96,6 +111,15 @@ async fn read_var_int<R: AsyncRead + Unpin>(stream: &mut R) -> std::io::Result<i
     }
 
     Ok(value)
+}
+
+async fn write_string<W: AsyncWrite + Unpin>(stream: &mut W, value: String) -> std::io::Result<()> {
+    let bytes = value.as_bytes();
+
+    write_var_int(stream, bytes.len() as i32).await?;
+    stream.write_all(bytes).await?;
+
+    Ok(())
 }
 
 async fn read_string<R: AsyncRead + Unpin>(stream: &mut R) -> std::io::Result<String> {
@@ -129,8 +153,27 @@ async fn write_packet<P: PacketEncoder>(stream: &mut TcpStream, packet: &P) -> s
     Ok(())
 }
 
+const RESPONSE: &str = r#"
+{
+    "version": {
+        "name": "1.18.2",
+        "protocol": 758
+    },
+    "players": {
+        "max": 100,
+        "online": 0,
+        "sample": []
+    },
+    "description": {
+        "text": "A Minecraft Server"
+    }
+}
+"#;
+
 async fn process_status(mut stream: TcpStream) -> std::io::Result<()> {
     let handshake = read_packet::<Handshake>(&mut stream).await?;
+
+    write_packet(&mut stream, &Response { value: RESPONSE.to_string() }).await?;
 
     println!("{:?}", handshake);
 
