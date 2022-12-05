@@ -171,11 +171,11 @@ const RESPONSE: &str = r#"
 "#;
 
 async fn process_status(mut stream: TcpStream) -> std::io::Result<()> {
-    let handshake = read_packet::<Handshake>(&mut stream).await?;
-
+    read_packet::<Handshake>(&mut stream).await?;
     write_packet(&mut stream, &Response { value: RESPONSE.to_string() }).await?;
 
-    println!("{:?}", handshake);
+    let ping = read_packet::<Ping>(&mut stream).await?;
+    write_packet(&mut stream, &ping).await?;
 
     Ok(())
 }
