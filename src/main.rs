@@ -189,6 +189,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(err) => panic!("Failed to bind server; err = {:?}", err),
     };
 
+    println!("Listening on {}", listener.local_addr()?);
+
     loop {
         let (socket, _) = listener.accept().await?;
 
